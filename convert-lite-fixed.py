@@ -1,0 +1,255 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Markdown to PDF Converter (using xhtml2pdf - Fixed Chinese Support)
+Convert Markdown files to PDF documents with proper Chinese font handling.
+"""
+
+import argparse
+import sys
+import os
+from pathlib import Path
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    os.system('chcp 65001 > nul')
+
+try:
+    import markdown
+    from xhtml2pdf import pisa
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+except ImportError as e:
+    print(f"Error: Missing required package: {e}")
+    print("\nInstall dependencies:")
+    print("  uv pip install markdown xhtml2pdf reportlab")
+    sys.exit(1)
+
+# 注册中文字体（Windows 系统）
+def register_chinese_fonts():
+    """注册 Windows 系统中文字体"""
+    font_dir = Path("C:/Windows/Fonts")
+    
+    fonts_to_register = {
+        "msyhbd": "Microsoft YaHei Bold",  # 微软雅黑粗体
+        "msyh": "Microsoft YaHei",  # 微软雅黑
+        "simsun": "SimSun",  # 宋体
+        "simhei": "SimHei",  # 黑体
+    }
+    
+    registered = []
+    for font_file, font_name in fonts_to_register.items():
+        font_path = font_dir / f"{font_file}.ttc"
+        if not font_path.exists():
+            font_path = font_dir / f"{font_file}.ttf"
+        
+        if font_path.exists():
+            try:
+                pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+                registered.append(font_name)
+                print(f"已注册字体：{font_name}")
+            except Exception as e:
+                print(f"字体注册失败 {font_name}: {e}")
+    
+    return len(registered) > 0
+
+# 注册字体
+fonts_registered = register_chinese_fonts()
+
+
+# CSS with Chinese font support
+DEFAULT_CSS = """
+body {
+    font-family: "Microsoft YaHei", "SimHei", sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #24292e;
+    margin: 20mm;
+}
+
+h1 {
+    font-family: "Microsoft YaHei", "SimHei", sans-serif;
+    font-size: 24pt;
+    color: #1a1a1a;
+    border-bottom: 2px solid #eaecef;
+    padding-bottom: 6px;
+    margin-top: 24px;
+}
+
+h2 {
+    font-family: "Microsoft YaHei", "SimHei", sans-serif;
+    font-size: 20pt;
+    color: #1a1a1a;
+    border-bottom: 1px solid #eaecef;
+    padding-bottom: 6px;
+    margin-top: 24px;
+}
+
+h3 { 
+    font-family: "Microsoft YaHei", "SimHei", sans-serif;
+    font-size: 16pt; 
+    color: #1a1a1a; 
+}
+
+h4, h5, h6 { 
+    font-family: "Microsoft YaHei", "SimHei", sans-serif;
+}
+
+p { 
+    font-family: "Microsoft YaHei", "SimHei", sans-serif;
+    margin: 12px 0; 
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    font-size: 10pt;
+}
+
+th, td {
+    font-family: "Microsoft YaHei", "SimHei", sans-serif;
+    border: 1px solid #dfe2e5;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #f6f8fa;
+    font-weight: 600;
+}
+
+code {
+    background-color: #f6f8fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "Consolas", monospace;
+    font-size: 0.9em;
+}
+
+pre {
+    background-color: #f6f8fa;
+    padding: 12px;
+    border-radius: 3px;
+    overflow: auto;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+}
+
+blockquote {
+    border-left: 4px solid #dfe2e5;
+    padding: 0 16px;
+    color: #6a737d;
+    margin: 16px 0;
+}
+
+ul, ol {
+    padding-left: 2em;
+    margin: 12px 0;
+}
+
+li { 
+    font-family: "Microsoft YaHei", "SimHei", sans-serif;
+    margin: 6px 0; 
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #eaecef;
+    margin: 24px 0;
+}
+"""
+
+
+def markdown_to_html(md_path: Path, title: str = None) -> str:
+    """Convert Markdown file to HTML string with Chinese support."""
+    
+    if not md_path.exists():
+        raise FileNotFoundError(f"Markdown file not found: {md_path}")
+    
+    with open(md_path, "r", encoding="utf-8") as f:
+        md_content = f.read()
+    
+    # Extract title from first heading if not provided
+    if not title:
+        import re
+        match = re.search(r"^#\s+(.+)$", md_content, re.MULTILINE)
+        if match:
+            title = match.group(1).strip()
+        else:
+            title = md_path.stem
+    
+    # Convert to HTML
+    html_body = markdown.markdown(
+        md_content,
+        extensions=["extra", "codehilite", "tables"],
+        output_format="html5",
+    )
+    
+    html = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+    <style>{DEFAULT_CSS}</style>
+</head>
+<body>
+{html_body}
+</body>
+</html>"""
+    
+    return html
+
+
+def convert_to_pdf(md_path: Path, pdf_path: Path, title: str = None) -> bool:
+    """Convert Markdown file to PDF using xhtml2pdf with Chinese support."""
+    
+    try:
+        html_content = markdown_to_html(md_path, title)
+        
+        with open(pdf_path, "wb") as pdf_file:
+            # Use encoding='utf-8' for Chinese support
+            result = pisa.CreatePDF(
+                html_content, 
+                dest=pdf_file, 
+                encoding='utf-8'
+            )
+            
+            if result.err:
+                print(f"PDF generation errors occurred", file=sys.stderr)
+                return False
+        
+        # Verify file was created
+        if pdf_path.exists() and pdf_path.stat().st_size > 0:
+            print(f"Success: {md_path.name} -> {pdf_path.name}")
+            print(f"PDF size: {pdf_path.stat().st_size / 1024:.1f} KB")
+            return True
+        else:
+            print(f"PDF file was not created or is empty", file=sys.stderr)
+            return False
+            
+    except Exception as e:
+        print(f"Conversion failed: {e}", file=sys.stderr)
+        return False
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Convert Markdown to PDF')
+    parser.add_argument('input', type=Path, help='Input Markdown file')
+    parser.add_argument('output', type=Path, help='Output PDF file')
+    parser.add_argument('--title', type=str, help='Document title')
+    
+    args = parser.parse_args()
+    
+    success = convert_to_pdf(args.input, args.output, args.title)
+    sys.exit(0 if success else 1)
+
+
+if __name__ == '__main__':
+    main()

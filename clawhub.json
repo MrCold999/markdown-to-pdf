@@ -1,0 +1,55 @@
+{
+  "name": "markdown-to-pdf",
+  "version": "1.0.0",
+  "description": "Convert Markdown files to professional PDF documents. No GTK3 dependency required. Supports Chinese language with optimized fonts.",
+  "author": "Boss 学术加速器",
+  "license": "MIT",
+  "keywords": [
+    "markdown",
+    "pdf",
+    "convert",
+    "document",
+    "chinese"
+  ],
+  "main": "convert-lite.py",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openclaw/skills"
+  },
+  "scripts": {
+    "convert": "python convert-lite.py"
+  },
+  "dependencies": {
+    "python": ">=3.8",
+    "packages": [
+      "markdown",
+      "xhtml2pdf",
+      "reportlab"
+    ]
+  },
+  "usage": "uv run python skills/markdown-to-pdf/convert-lite.py input.md output.pdf --title \"Document Title\"",
+  "examples": [
+    {
+      "name": "Basic Conversion",
+      "command": "uv run python convert-lite.py document.md document.pdf"
+    },
+    {
+      "name": "With Custom Title",
+      "command": "uv run python convert-lite.py input.md output.pdf --title \"My Document\""
+    }
+  ],
+  "category": "document",
+  "tags": [
+    "productivity",
+    "document",
+    "pdf",
+    "markdown"
+  ],
+  "platform": [
+    "windows",
+    "macos",
+    "linux"
+  ],
+  "created": "2026-03-03",
+  "updated": "2026-03-03"
+}
